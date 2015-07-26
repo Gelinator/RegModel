@@ -1,0 +1,164 @@
+---
+title: "Modelization of Transmission Type's influence on Fuel Efficiency"
+output: word_document
+---
+
+# Executive summary
+
+The present document looks into the **mtcars** dataset in order to analyze the impact of the transmission type on fuel efficiency (in mpg).
+
+In a first instance, the data will be explored, looking for potential relations between variables, focusing on the transmission type. Secondly, linear models will be thouroughly tested and the one deemed optimal will be selected among them. Finally, conclusions will be drawn from the analysis, along with the limitations of the analysis.
+
+# Exploratory data analyses
+
+In this segment, the correlation table from Annex B will be used to draw a better picture of the data at hand. As aforementionned, potential relation between transmission type (**am**) and fuel efficiency (**mpg**) will be investigated in the first place, and relations between other variables will be looked after for potential multicolinearity.
+
+```{r loadItUp,echo=FALSE,message=FALSE}
+#loading the data
+data(mtcars)
+mtcars2<- mtcars
+#Loading the required packages
+require(plyr)
+require(DAAG)
+require(scatterplot3d)
+require(knitr)
+```
+
+Those relationships are evidenced by the correlation between MPG and the other variables in the dataset, as depicted by the table in **Annex B**. None of the correlation factors are below 0.40 and almost 40% being above 0.75, many variables have significant linear relationships with MPG, and multicolinearity will likely be a concern looking at the other pairs.
+
+# Modelisation
+
+The model building strategy will be trial and error, as proposed in the lectures. Testing various alternatives allows to get some familiarity with the data and observe how variables are interrelated.
+
+A total of three models are presented. More were tried but would use too much room for this paper.
+
+* fit.1: Takes the transmission type as sole predictor. It thus assumes the others have no impact whatsoever on a car's mpg.
+* fit.2: Builds upon fit.1, with weight and horsepower as added predictor. Observations in **Annex B** have shown a significant correlation with *mpg*.
+* fit.3: Is built with two predictors on top of **am**; **wt**, **qsec**. Those two were chosen for their high correlation with **mpg**, as well as their low correlation among them, steering clear of multicolinearity.
+
+```{r LMs,echo=FALSE}
+##Three of the models to compare
+fit.1 <- lm(mpg ~ am, data = mtcars)
+fit.2 <- lm(mpg ~ am + hp + wt, data =mtcars)
+fit.3 <- lm(mpg ~ am + wt + qsec, data = mtcars)
+```
+
+# Selection
+
+As there are several model possibilities, a selection strategy is devised. It should therefore have have significant predictors, low multicolinearity and be a good fit to the data. The presence of the **am** variable throughout the models is consequent with this study's objective.
+
+The significance level is set at 5% (α=.05). First, an ANOVA is performed to make sure that all the predictors meet the significance level. The models with solely significant predictors will get their VIF measured to investigate for multicolinearity. The threshold i 10 (e.g., Hair, Anderson, Tatham, & Black, 1995). Finally, the model selected will be the one with the highest adjusted $R^2$.
+
+## ANOVA
+```{r Model ANOVAs,echo=FALSE}
+α <- 0.05
+Anova1 <- anova(fit.1)
+Anova2 <- anova(fit.2)
+Anova3 <- anova(fit.3)
+```
+
+The models' predictors ANOVA p-values (that wasn't an easy one) were the following
+
+* fit.1: am `r Anova1[1,5]`
+
+* fit.2: am `r Anova2[1,5]`; hp `r Anova2[2,5]`; wt `r Anova2[3,5]`
+
+* fit.3: am `r Anova3[1,5]`; wt `r Anova3[2,5]`; qsec `r Anova3[3,5]`
+
+
+The previous data from the models' ANOVAs shows that the four models use significant predictors (p-value < α).
+
+## Variance Inflation Factor
+
+```{r VIF,echo=FALSE}
+kable(rbind(c("fit.1",replicate(3,"fit.2"),replicate(3,"fit.3")),round(c(vif(fit.1),vif(fit.2),vif(fit.3)),2)))
+```
+
+All three models' predictors show no major colinearity as they don't inflate one another (VIFs < 10).
+
+### Adjusted $R^2$
+
+```{r Adj. R^2,echo=FALSE,eval=FALSE}
+summary(fit.1)$adj.r.squared
+summary(fit.2)$adj.r.squared
+summary(fit.3)$adj.r.squared
+```
+
+The results are the following for the adjusted $R^2$:
+
+* fit.1 model : `r summary(fit.1)$adj.r.squared`
+* fit.2 model : `r summary(fit.2)$adj.r.squared`
+* fit.3 model : `r summary(fit.3)$adj.r.squared`
+
+The third model (fit.3) showcases the highest adjusted $R^2$, as well as having a relatively low VIF. It therefore is chosen as the best fitting model.
+
+## Residuals & Diagnostics
+
+In **Annex C**, the Residuals vs Fitted and Scale-Location graphs illustrate that no particular pattern can be observed in the residuals, other than the model is not as well suited at both extremities of the spectrum than in the middle. The Normal Q-Q plot showcases an apparent normality in the standardized residuals, with the exception of a slight deviance at both tail, previously observed in the Residuals vs Fitted graph. Finally, the Residuals vs Leverage graph showcases how influential the data points are to the model. Cars like the Chrysler Imperial and Fiat 128 could be potential outliers. Further analysis should be pursued.
+
+# Conclusion and Inference
+
+Considering the results of the fitted model, a manual transmission is more fuel efficient than an automatic, the former having better **mpg**.
+
+In fact, at 95% confidence, the interval for the transmission coefficient is `r round(confint(fit.3)[2,],2)`, thus rejecting the null hypothesis that there is no difference between them. The scatterplot of **Annex C** tends to demonstrate this difference, as most of the automatics are on the lower side of the **mpg** spectrum. From the results, we can infer that an equivalent car with a manual transmission will be on average `r round(fit.3$coefficients[2],2)` mpg better than its automatic counterpart. Two of the three models demonstrated the manual transmission superiority, to various degree. It should be noted that a larger random sample of cars would allow for a more concise estimation of the fuel efficiency improvements of manual transmission.
+
+******************************
+# Annex A - The Code
+```{r loadItUp,eval=FALSE}
+```
+
+```{r Correlation,eval=FALSE}
+correlations <- data.frame(cor(mtcars))
+names(correlations) <- names(mtcars)
+kable(correlations,digits=2)
+```
+
+```{r LMs,eval=FALSE}
+```
+
+```{r Model ANOVAs,eval=FALSE}
+```
+
+```{r VIF,eval=FALSE}
+```
+
+```{r Adj. R^2,eval=FALSE}
+```
+
+```{r residuals,eval=FALSE}
+```
+
+```{r Diagnostics,eval=FALSE}
+```
+
+```{r Answer,eval=FALSE}
+mtcars2$pcolor[mtcars$am==1] <- "red"
+mtcars2$pcolor[mtcars$am==0] <- "blue"
+scatterplot3d(x=mtcars$wt,y=mtcars$mpg,z=mtcars$qsec,type="h",lty.hplot = 2,color=mtcars2$pcolor,pch=19, angle=290,ylab="Fuel Efficiency (mpg)",xlab="Weight (thousand lbs)",zlab="Quarter mile time (sec)", main="Distribution of Modelized Variables")
+legend("topright", inset=.001, bty="n", cex=.5, title="Transmission", c("Automatic", "Manual"), fill=c("blue", "red"))
+```
+
+# Annex B - Tables
+
+## Correlation Table
+```{r Correlation,echo=FALSE}
+```
+
+## Model Coefficients Summaries
+```{r echo=FALSE}
+kable(round(summary(fit.1)$coef,2))
+kable(round(summary(fit.2)$coef,2))
+kable(round(summary(fit.3)$coef,2))
+```
+
+# Annex C - Graphs
+## Diagnostics & Residuals
+```{r Diagnostics,echo=FALSE,message=FALSE}
+par(mfrow=c(2,2));
+plot(fit.3)
+par(mfrow=c(1,1))
+```
+
+## Modelized Data Scatterplot
+```{r Answer,echo=FALSE}
+```
